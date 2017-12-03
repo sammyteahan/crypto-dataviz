@@ -36,6 +36,7 @@ type Msg
     = NoOp
     | Echo
     | Subscribe
+    | Unsubscribe
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -49,6 +50,9 @@ update msg model =
 
         Subscribe ->
             model ! [ WebSocket.send socketUrl subMessage ]
+
+        Unsubscribe ->
+            model ! [ WebSocket.send socketUrl unsubMessage ]
 
 
 
@@ -80,6 +84,7 @@ view model =
         [ img [ src "/logo.svg" ] []
         , h1 [] [ text "Your Elm App is working!" ]
         , button [ onClick Subscribe ] [ text "send subscription message" ]
+        , button [ onClick Unsubscribe ] [ text "unsubscribe" ]
         , div []
             [ renderSampleMessage
             ]
@@ -151,6 +156,23 @@ subMessage =
     """
     {
         "type": "subscribe",
+        "product_ids": [
+            "ETH-USD",
+            "ETH-EUR"
+        ],
+        "channels": [
+            "level2",
+            "heartbeat"
+        ]
+    }
+    """
+
+
+unsubMessage : String
+unsubMessage =
+    """
+    {
+        "type": "unsubscribe",
         "product_ids": [
             "ETH-USD",
             "ETH-EUR"
