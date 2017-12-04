@@ -106,9 +106,12 @@ view model =
 
 socketUrl : String
 socketUrl =
-    "wss://ws-feed-public.sandbox.gdax.com"
+    "wss://ws-feed.gdax.com"
 
 
+{-| @todo create a type alias for socket responses, add something to the model,
+then create necessary decoders and watch this baby fly
+-}
 decodeResponse : String -> Msg
 decodeResponse message =
     Debug.log message
@@ -143,7 +146,7 @@ subscriptionMsg =
             "BTC-USD"
         ],
         "channels": [
-            "heartbeat"
+            "ticker"
         ]
     }
     """
@@ -158,7 +161,7 @@ unsubMessage =
             "BTC-USD"
         ],
         "channels": [
-            "heartbeat"
+            "ticker"
         ]
     }
     """
@@ -176,7 +179,7 @@ subMsg : SubscriptionMessage
 subMsg =
     { type_ = "subscribe"
     , product_ids = [ "ETH-USD", "BTC-USD" ]
-    , channels = [ "level2" ]
+    , channels = [ "heartbeat", "level2" ]
     }
 
 
