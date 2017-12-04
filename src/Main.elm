@@ -20,12 +20,12 @@ type alias SubscriptionMessage =
 
 
 type alias Model =
-    {}
+    { subscribed : Bool }
 
 
 init : ( Model, Cmd Msg )
 init =
-    ( {}, Cmd.none )
+    { subscribed = False } ! []
 
 
 
@@ -49,10 +49,10 @@ update msg model =
             model ! []
 
         Subscribe ->
-            model ! [ WebSocket.send socketUrl subMessage ]
+            { model | subscribed = True } ! [ WebSocket.send socketUrl subscriptionMsg ]
 
         Unsubscribe ->
-            model ! [ WebSocket.send socketUrl unsubMessage ]
+            { model | subscribed = False } ! [ WebSocket.send socketUrl unsubMessage ]
 
 
 
@@ -63,7 +63,7 @@ renderSampleMessage : Html Msg
 renderSampleMessage =
     let
         decodedMsg =
-            JsonDecoder.decodeString messageDecoder subMessage
+            JsonDecoder.decodeString messageDecoder subscriptionMsg
     in
         case decodedMsg of
             Ok msg ->
@@ -78,16 +78,25 @@ renderSampleMessage =
                     ]
 
 
+renderStatus : Model -> Html Msg
+renderStatus model =
+    case model.subscribed of
+        True ->
+            div [] [ h1 [] [ text "You are subscribed!" ] ]
+
+        False ->
+            div [] [ h1 [] [ text "Not connected to socket stream" ] ]
+
+
 view : Model -> Html Msg
 view model =
     div []
         [ img [ src "/logo.svg" ] []
-        , h1 [] [ text "Your Elm App is working!" ]
+        , renderStatus model
         , button [ onClick Subscribe ] [ text "send subscription message" ]
         , button [ onClick Unsubscribe ] [ text "unsubscribe" ]
         , div []
-            [ renderSampleMessage
-            ]
+            [ renderSampleMessage ]
         ]
 
 
@@ -125,43 +134,15 @@ main =
         }
 
 
-{-| crap I have to json encode this whole thing
--}
-sampleSubMsg : String
-sampleSubMsg =
+subscriptionMsg : String
+subscriptionMsg =
     """
     {
         "type": "subscribe",
         "product_ids": [
-            "ETH-USD",
-            "ETH-EUR"
+            "BTC-USD"
         ],
         "channels": [
-            "level2",
-            "heartbeat",
-            {
-                "name": "ticker",
-                "product_ids": [
-                    "ETH-BTC",
-                    "ETH-GBP"
-                ]
-            },
-        ]
-    }
-    """
-
-
-subMessage : String
-subMessage =
-    """
-    {
-        "type": "subscribe",
-        "product_ids": [
-            "ETH-USD",
-            "ETH-EUR"
-        ],
-        "channels": [
-            "level2",
             "heartbeat"
         ]
     }
@@ -174,11 +155,9 @@ unsubMessage =
     {
         "type": "unsubscribe",
         "product_ids": [
-            "ETH-USD",
-            "ETH-EUR"
+            "BTC-USD"
         ],
         "channels": [
-            "level2",
             "heartbeat"
         ]
     }
