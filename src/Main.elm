@@ -19,12 +19,16 @@ type alias SubscriptionMessage =
     }
 
 
+{-| Responses are always in strings. Would be nice to parse them
+into floats as they should be represented. Is the decoder the
+best place to do that?
+-}
 type alias GdaxResponse =
     { type_ : String
     , product_id : String
-    , price : Float
-    , volume_24 : Float
-    , high_24h : Float
+    , price : String
+    , volume_24 : String
+    , high_24h : String
     }
 
 
@@ -46,7 +50,7 @@ init =
 
 type Msg
     = NoOp
-    | Echo SubscriptionMessage
+    | Echo GdaxResponse
     | ErrorHandler String
     | Subscribe
     | Unsubscribe
@@ -59,8 +63,11 @@ update msg model =
             model ! []
 
         Echo message ->
-            model
-                ! []
+            let
+                newPrices =
+                    message :: model.prices
+            in
+                { model | prices = newPrices } ! []
 
         ErrorHandler error ->
             Debug.log error
@@ -107,6 +114,19 @@ renderStatus model =
             div [] [ h1 [] [ text "Not connected to socket stream" ] ]
 
 
+renderPrices : Model -> Html Msg
+renderPrices model =
+    model.prices
+        |> List.map (renderPrice)
+        |> ul []
+
+
+renderPrice : GdaxResponse -> Html Msg
+renderPrice price =
+    li []
+        [ text price.price ]
+
+
 view : Model -> Html Msg
 view model =
     div []
@@ -115,7 +135,9 @@ view model =
         , button [ onClick Subscribe ] [ text "send subscription message" ]
         , button [ onClick Unsubscribe ] [ text "unsubscribe" ]
         , div []
-            [ renderSampleMessage ]
+            [ renderPrices model
+            , renderSampleMessage
+            ]
         ]
 
 
@@ -128,11 +150,17 @@ socketUrl =
     "wss://ws-feed.gdax.com"
 
 
+{-| When we send a message to unsubscribe, we get back a response
+that looks like the SubscriptionMessage type alias. Therefore,
+I may need a type alias that combines those two types so I can
+decide which one I need to use here. Either that or I need to
+handle the websocket responses in entirely different functions
+-}
 decodeResponse : String -> Msg
 decodeResponse message =
     let
         decodedMessage =
-            JsonDecoder.decodeString messageDecoder message
+            JsonDecoder.decodeString responseDecoder message
     in
         case decodedMessage of
             Ok message ->
@@ -161,44 +189,14 @@ main =
         }
 
 
-subscriptionMsg : String
-subscriptionMsg =
-    """
-    {
-        "type": "subscribe",
-        "product_ids": [
-            "BTC-USD"
-        ],
-        "channels": [
-            "ticker"
-        ]
-    }
-    """
-
-
-unsubMessage : String
-unsubMessage =
-    """
-    {
-        "type": "unsubscribe",
-        "product_ids": [
-            "BTC-USD"
-        ],
-        "channels": [
-            "ticker"
-        ]
-    }
-    """
-
-
 responseDecoder : JsonDecoder.Decoder GdaxResponse
 responseDecoder =
     Pipeline.decode GdaxResponse
         |> Pipeline.required "type" JsonDecoder.string
         |> Pipeline.required "product_id" JsonDecoder.string
-        |> Pipeline.required "price" JsonDecoder.float
-        |> Pipeline.required "volume_24" JsonDecoder.float
-        |> Pipeline.required "high_24h" JsonDecoder.float
+        |> Pipeline.required "price" JsonDecoder.string
+        |> Pipeline.required "volume_24h" JsonDecoder.string
+        |> Pipeline.required "high_24h" JsonDecoder.string
 
 
 messageDecoder : JsonDecoder.Decoder SubscriptionMessage
@@ -234,3 +232,33 @@ subscriptionMessage =
         , ( "product_ids", Encode.list (List.map Encode.string subscriptionProducts) )
         , ( "channels", Encode.list (List.map Encode.string subscriptionChannels) )
         ]
+
+
+subscriptionMsg : String
+subscriptionMsg =
+    """
+    {
+        "type": "subscribe",
+        "product_ids": [
+            "BTC-USD"
+        ],
+        "channels": [
+            "ticker"
+        ]
+    }
+    """
+
+
+unsubMessage : String
+unsubMessage =
+    """
+    {
+        "type": "unsubscribe",
+        "product_ids": [
+            "BTC-USD"
+        ],
+        "channels": [
+            "ticker"
+        ]
+    }
+    """
