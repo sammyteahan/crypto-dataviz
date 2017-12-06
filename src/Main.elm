@@ -19,13 +19,25 @@ type alias SubscriptionMessage =
     }
 
 
+type alias GdaxResponse =
+    { type_ : String
+    , product_id : String
+    , price : Float
+    , volume_24 : Float
+    , high_24h : Float
+    }
+
+
 type alias Model =
-    { subscribed : Bool }
+    { subscribed : Bool
+    , responses : List SubscriptionMessage
+    , prices : List GdaxResponse
+    }
 
 
 init : ( Model, Cmd Msg )
 init =
-    { subscribed = False } ! []
+    { subscribed = False, responses = [], prices = [] } ! []
 
 
 
@@ -34,7 +46,8 @@ init =
 
 type Msg
     = NoOp
-    | Echo
+    | Echo SubscriptionMessage
+    | ErrorHandler String
     | Subscribe
     | Unsubscribe
 
@@ -45,8 +58,14 @@ update msg model =
         NoOp ->
             model ! []
 
-        Echo ->
-            model ! []
+        Echo message ->
+            model
+                ! []
+
+        ErrorHandler error ->
+            Debug.log error
+                model
+                ! []
 
         Subscribe ->
             { model | subscribed = True } ! [ WebSocket.send socketUrl subscriptionMsg ]
@@ -109,13 +128,18 @@ socketUrl =
     "wss://ws-feed.gdax.com"
 
 
-{-| @todo create a type alias for socket responses, add something to the model,
-then create necessary decoders and watch this baby fly
--}
 decodeResponse : String -> Msg
 decodeResponse message =
-    Debug.log message
-        Echo
+    let
+        decodedMessage =
+            JsonDecoder.decodeString messageDecoder message
+    in
+        case decodedMessage of
+            Ok message ->
+                Echo message
+
+            Err error ->
+                ErrorHandler error
 
 
 subscriptions : Model -> Sub Msg
@@ -165,6 +189,16 @@ unsubMessage =
         ]
     }
     """
+
+
+responseDecoder : JsonDecoder.Decoder GdaxResponse
+responseDecoder =
+    Pipeline.decode GdaxResponse
+        |> Pipeline.required "type" JsonDecoder.string
+        |> Pipeline.required "product_id" JsonDecoder.string
+        |> Pipeline.required "price" JsonDecoder.float
+        |> Pipeline.required "volume_24" JsonDecoder.float
+        |> Pipeline.required "high_24h" JsonDecoder.float
 
 
 messageDecoder : JsonDecoder.Decoder SubscriptionMessage
