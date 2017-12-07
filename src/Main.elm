@@ -41,7 +41,7 @@ type alias Model =
 
 init : ( Model, Cmd Msg )
 init =
-    { subscribed = False, responses = [], prices = [] } ! []
+    { subscribed = False, responses = [], prices = [] } ! [ WebSocket.send socketUrl subscriptionMsg ]
 
 
 
@@ -52,7 +52,6 @@ type Msg
     = NoOp
     | Echo GdaxResponse
     | ErrorHandler String
-    | Subscribe
     | Unsubscribe
 
 
@@ -73,9 +72,6 @@ update msg model =
             Debug.log error
                 model
                 ! []
-
-        Subscribe ->
-            { model | subscribed = True } ! [ WebSocket.send socketUrl subscriptionMsg ]
 
         Unsubscribe ->
             { model | subscribed = False } ! [ WebSocket.send socketUrl unsubMessage ]
@@ -118,20 +114,30 @@ renderPrices : Model -> Html Msg
 renderPrices model =
     model.prices
         |> List.map (renderPrice)
-        |> ul [ style [ ( "height", "50vh" ), ( "overflow", "hidden" ), ( "padding", "0" ) ] ]
+        |> ul
+            [ style
+                [ ( "height", "50vh" )
+                , ( "overflow", "hidden" )
+                , ( "padding", "0" )
+                ]
+            ]
 
 
 renderPrice : GdaxResponse -> Html Msg
 renderPrice price =
-    li [ style [ ( "color", "#15232c" ), ( "list-style", "none" ) ] ]
+    li
+        [ style
+            [ ( "color", "#15232c" )
+            , ( "list-style", "none" )
+            ]
+        ]
         [ text price.price ]
 
 
 renderActions : Html Msg
 renderActions =
     div []
-        [ button [ onClick Subscribe ] [ text "send subscription message" ]
-        , button [ onClick Unsubscribe ] [ text "unsubscribe" ]
+        [ button [ onClick Unsubscribe ] [ text "unsubscribe" ]
         ]
 
 
