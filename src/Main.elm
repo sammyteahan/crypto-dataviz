@@ -9,7 +9,7 @@ import Json.Decode as JsonDecoder exposing (..)
 import Json.Decode.Pipeline as Pipeline exposing (decode, required)
 
 
----- MODEL ----
+---- ¡MODEL ----
 
 
 type alias SubscriptionMessage =
@@ -45,7 +45,7 @@ init =
 
 
 
----- UPDATE ----
+---- ¡UPDATE ----
 
 
 type Msg
@@ -82,7 +82,7 @@ update msg model =
 
 
 
----- VIEW ----
+---- ¡VIEW ----
 
 
 renderSampleMessage : Html Msg
@@ -118,31 +118,35 @@ renderPrices : Model -> Html Msg
 renderPrices model =
     model.prices
         |> List.map (renderPrice)
-        |> ul []
+        |> ul [ style [ ( "height", "50vh" ), ( "overflow", "hidden" ), ( "padding", "0" ) ] ]
 
 
 renderPrice : GdaxResponse -> Html Msg
 renderPrice price =
-    li []
+    li [ style [ ( "color", "#15232c" ), ( "list-style", "none" ) ] ]
         [ text price.price ]
+
+
+renderActions : Html Msg
+renderActions =
+    div []
+        [ button [ onClick Subscribe ] [ text "send subscription message" ]
+        , button [ onClick Unsubscribe ] [ text "unsubscribe" ]
+        ]
 
 
 view : Model -> Html Msg
 view model =
     div []
-        [ img [ src "/logo.svg" ] []
-        , renderStatus model
-        , button [ onClick Subscribe ] [ text "send subscription message" ]
-        , button [ onClick Unsubscribe ] [ text "unsubscribe" ]
-        , div []
-            [ renderPrices model
-            , renderSampleMessage
-            ]
+        [ renderStatus model
+        , renderSampleMessage
+        , renderActions
+        , div [] [ renderPrices model ]
         ]
 
 
 
----- SUBSCRIPTIONS ----
+---- ¡SUBSCRIPTIONS ----
 
 
 socketUrl : String
@@ -176,7 +180,7 @@ subscriptions model =
 
 
 
----- PROGRAM ----
+---- ¡PROGRAM ----
 
 
 main : Program Never Model Msg
