@@ -14,7 +14,6 @@ import Json.Decode.Pipeline as Pipeline exposing (decode, required)
 
 type alias SubscriptionMessage =
     { type_ : String
-    , product_ids : List String
     , channels : List String
     }
 
@@ -41,7 +40,7 @@ type alias Model =
 
 init : ( Model, Cmd Msg )
 init =
-    { subscribed = False, responses = [], prices = [] } ! [ WebSocket.send socketUrl subscriptionMsg ]
+    { subscribed = True, responses = [], prices = [] } ! [ WebSocket.send socketUrl subscriptionMsg ]
 
 
 
@@ -53,6 +52,7 @@ type Msg
     | Echo GdaxResponse
     | ErrorHandler String
     | Unsubscribe
+    | HandleMessage SubscriptionMessage
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -75,6 +75,9 @@ update msg model =
 
         Unsubscribe ->
             { model | subscribed = False } ! [ WebSocket.send socketUrl unsubMessage ]
+
+        HandleMessage subscriptionMessage ->
+            model ! []
 
 
 
@@ -180,9 +183,30 @@ decodeResponse message =
                 ErrorHandler error
 
 
+decodeUnsubscribeResponse : String -> Msg
+decodeUnsubscribeResponse message =
+    let
+        decodedMessage =
+            JsonDecoder.decodeString messageDecoder message
+    in
+        case decodedMessage of
+            Ok message ->
+                HandleMessage message
+
+            Err error ->
+                ErrorHandler error
+
+
+{-| this check isn't good enough
+-}
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    WebSocket.listen socketUrl decodeResponse
+    case model.subscribed of
+        True ->
+            WebSocket.listen socketUrl decodeResponse
+
+        False ->
+            WebSocket.listen socketUrl decodeUnsubscribeResponse
 
 
 
@@ -213,14 +237,12 @@ messageDecoder : JsonDecoder.Decoder SubscriptionMessage
 messageDecoder =
     Pipeline.decode SubscriptionMessage
         |> Pipeline.required "type" JsonDecoder.string
-        |> Pipeline.required "product_ids" (JsonDecoder.list JsonDecoder.string)
         |> Pipeline.required "channels" (JsonDecoder.list JsonDecoder.string)
 
 
 subMsg : SubscriptionMessage
 subMsg =
     { type_ = "subscribe"
-    , product_ids = [ "ETH-USD", "BTC-USD" ]
     , channels = [ "heartbeat", "level2" ]
     }
 
